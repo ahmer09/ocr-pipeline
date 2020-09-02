@@ -75,5 +75,34 @@ def extract_digit(cell, debug=False):
         cv2.imshow("Cell Thresh", thresh)
         cv2.waitKey(0)
 
+    # find contours in the thresholded cell
+    cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
 
+    # if no contours were found than this is an empty cell
+    if len(cnts) == 0:
+        return None
+
+    # otherwise, find the largest contour in the cell and create a mask for the contour
+    c = max(cnts, key=cv2.contourArea)
+    mask = np.zeros(thresh.shape, dtype="unit8")
+    cv2.drawContours(mask, [c], -1, 255, -1)
+
+    # compute the percentage of masked pixels relative to the total area of the image
+    (h, w) = thresh.shape
+    percentfilled = cv2.countNonZero(mask) / float(w * h)
+
+    # if less than 3% of the mask is filled then we are looking at noise and can safetly ignore the contour
+    if percentfilled < 0.03:
+        return None
+
+    # apply the mask to the thresholded cell
+    digit = cv2.bitwise_and(thresh, thresh, mask=mask)
+    # check to see if we should visualize the masking step
+    if debug:
+        cv2.imshow("Digit", digit)
+        cv2.waitKey(0)
+
+    # return the digit to the calling function
+    return digit
 
